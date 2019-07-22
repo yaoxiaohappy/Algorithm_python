@@ -17,6 +17,14 @@ ops.reset_default_graph()
 sess = tf.Session()
 #placeholder
 
+def generatebatch(X,Y,n_examples, batch_size):
+    for batch_i in range(n_examples // batch_size):
+        start = batch_i*batch_size
+        end = start + batch_size
+        batch_xs = X[start:end]
+        batch_ys = Y[start:end]
+        yield batch_xs, batch_ys # 生成每一个batch
+
 # --------Convolution--------
 def conv_layer_1d(input_1d, my_filter, stride):
     # TensorFlow's 'conv2d()' function only works with 4D arrays:
@@ -129,15 +137,30 @@ print('>>>> 1D Data <<<<')
 
 #print(sess.run(my_full_output, feed_dict=feed_dict))
 loss = -tf.reduce_mean(tf_Y*tf.log(tf.clip_by_value(my_full_output,1e-11,1.0)))
-sess.run(init)
+
 #train_step = tf.train.AdamOptimizer(1e-3).minimize(loss)
 train_op = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(loss)
-print(sess.run(loss, feed_dict=feed_dict))
+y_pred = tf.arg_max(my_full_output,1)
+bool_pred = tf.equal(tf.arg_max(tf_Y,1),y_pred)
+
+accuracy = tf.reduce_mean(tf.cast(bool_pred,tf.float32)) # 准确率
+
+sess.run(init)
+for batch_xs, batch_ys in generatebatch(iris.data, feed_Y, feed_Y.shape[0], 10):  # 每个周期进行MBGD算法
+    #print(sess.run(loss, feed_dict=feed_dict))
+    print("---------")
+    print(sess.run([tf_Y,y_pred,accuracy], feed_dict={tf_X: batch_xs, tf_Y: batch_ys}))
+    print("---------")
+
+   # print(sess.run(tf.cast(bool_pred,tf.float32) , feed_dict={tf_X: batch_xs, tf_Y: batch_ys}))
+    #print(sess.run(accuracy, feed_dict={tf_X: batch_xs, tf_Y: batch_ys}))
+#print(sess.run(loss, feed_dict=feed_dict))
 """
 # Activation Output
 print('\nInput = above array of length %d'%(my_convolution_output.shape.as_list()[0]))  # 21
 print('ReLU element wise returns an array of length %d:'%(my_activation_output.shape.as_list()[0]))  # 21
 print(sess.run(my_activation_output, feed_dict=feed_dict))
+
 
 # Max Pool Output
 print('\nInput = above array of length %d'%(my_activation_output.shape.as_list()[0]))  # 21
